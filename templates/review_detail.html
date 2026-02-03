@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}{{ review.app_name }} – App UAT Reviews{% endblock %}
+{% block content %}
+  <h1>{{ review.app_name }}</h1>
+  <p class="meta">
+    App ID: {{ review.app_id }} · Date: {{ review.date }} · Status: <span class="status status-{{ review.status }}">{{ review.status_display }}</span>
+    {% if review.archived %}<span class="badge badge-archived">Archived</span>{% endif %}
+  </p>
+  <dl class="meta-list">
+    <dt>App owner email</dt>
+    <dd>{{ review.app_owner_email or '—' }}</dd>
+    <dt>Overall notes</dt>
+    <dd>{{ review.overall_notes or '—' }}</dd>
+    <dt>Created</dt>
+    <dd>{{ review.created_at or '—' }}</dd>
+  </dl>
+
+  <h2>Checklist results</h2>
+  {% if not sections_criteria %}
+    <p class="muted">No criteria. <a href="{{ url_for('review_run', review_id=review.id) }}">Run checklist</a> to add results.</p>
+  {% else %}
+    {% for sec in sections_criteria %}
+      <div class="criteria-section">
+        <h3 class="section-title">{{ sec.name }}</h3>
+        <table class="run-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Criterion</th>
+              <th>Result</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for c in sec['items'] %}
+              <tr>
+                <td>{{ loop.index }}</td>
+                <td>{{ c.text }}</td>
+                <td><span class="result-badge result-{{ (c.result or 'empty')|lower }}">{{ c.result or '—' }}</span></td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% endfor %}
+  {% endif %}
+
+  <div class="detail-actions">
+    <a href="{{ url_for('pdf_export', review_id=review.id) }}" class="btn btn-primary">Export PDF</a>
+    <form method="post" action="{{ url_for('re_review', review_id=review.id) }}" style="display:inline;">
+      <button type="submit" class="btn">Re-review this app</button>
+    </form>
+    {% if review.status == 'completed' %}
+      <form method="post" action="{{ url_for('approve', review_id=review.id) }}" style="display:inline;">
+        <button type="submit" class="btn btn-approve">Approve</button>
+      </form>
+      <form method="post" action="{{ url_for('reject', review_id=review.id) }}" style="display:inline;">
+        <button type="submit" class="btn btn-danger">Reject</button>
+      </form>
+    {% endif %}
+    {% if not review.archived and review.status in ('approved', 'rejected') %}
+      <form method="post" action="{{ url_for('archive', review_id=review.id) }}" style="display:inline;">
+        <button type="submit" class="btn btn-secondary">Archive</button>
+      </form>
+    {% endif %}
+    {% if review.archived %}
+      <form method="post" action="{{ url_for('unarchive', review_id=review.id) }}" style="display:inline;">
+        <button type="submit" class="btn btn-secondary">Unarchive</button>
+      </form>
+    {% endif %}
+    <a href="{{ url_for('review_run', review_id=review.id) }}" class="btn">Edit checklist results</a>
+    <a href="{{ url_for('index', tab='archived' if review.archived else 'active') }}">Back to runs</a>
+  </div>
+{% endblock %}

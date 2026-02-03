@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Run checklist – {{ review.app_name }}{% endblock %}
+{% block content %}
+  <h1>Run checklist: {{ review.app_name }}</h1>
+  <p class="muted">App ID: {{ review.app_id }} · Date: {{ review.date }}</p>
+
+  {% if not sections_criteria %}
+    <p class="muted">No checklist items. <a href="{{ url_for('checklist_edit') }}">Add criteria</a> first.</p>
+  {% else %}
+    <form method="post" action="{{ url_for('review_run', review_id=review.id) }}">
+      {% for sec in sections_criteria %}
+        <div class="criteria-section">
+          <h3 class="section-title">{{ sec.name }}</h3>
+          <table class="run-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Criterion</th>
+                <th>Result</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for c in sec['items'] %}
+                <tr>
+                  <td>{{ loop.index }}</td>
+                  <td>{{ c.text }}</td>
+                  <td class="result-buttons">
+                    {% for opt in results_options %}
+                      <label class="result-label">
+                        <input type="radio" name="result_{{ c.id }}" value="{{ opt }}" {% if c.result == opt %}checked{% endif %}>
+                        <span class="result-{{ opt|lower }}">{{ opt }}</span>
+                      </label>
+                    {% endfor %}
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% endfor %}
+      <p class="actions">
+        <button type="submit" name="action" value="save" class="btn">Save and continue later</button>
+        <button type="submit" name="action" value="finish" class="btn btn-primary">Finish review</button>
+      </p>
+    </form>
+  {% endif %}
+  <p><a href="{{ url_for('review_detail', review_id=review.id) }}">Back to review</a></p>
+{% endblock %}

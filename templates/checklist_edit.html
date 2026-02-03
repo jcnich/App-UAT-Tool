@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}Checklist – App UAT Reviews{% endblock %}
+{% block content %}
+  <h1>Checklist</h1>
+  <p>Organize criteria into sections. Paste into a section, or add and edit sections and items below.</p>
+
+  <section class="card">
+    <h2>Paste into section</h2>
+    <form method="post" action="{{ url_for('checklist_edit') }}">
+      <input type="hidden" name="action" value="paste">
+      <label>Section</label>
+      <select name="section_id" required>
+        {% for sec in sections %}
+          <option value="{{ sec['id'] }}">{{ sec['name'] }}</option>
+        {% endfor %}
+      </select>
+      <label>Paste one criterion per line (items are added to the selected section)</label>
+      <textarea name="checklist_text" rows="8" class="full-width" placeholder="Paste one criterion per line..."></textarea>
+      <p><button type="submit" class="btn btn-primary">Add to section</button></p>
+    </form>
+  </section>
+
+  <section class="card">
+    <h2>Sections and items</h2>
+    {% if not sections %}
+      <p class="muted">No sections yet. Add a section below.</p>
+    {% else %}
+      <form method="post" action="{{ url_for('checklist_edit') }}" id="reorder-form">
+        <input type="hidden" name="action" value="reorder">
+        {% for sec in sections %}
+          <div class="section-block">
+            <div class="section-header">
+              <form method="post" action="{{ url_for('checklist_edit') }}" class="section-name-form">
+                <input type="hidden" name="action" value="rename_section">
+                <input type="hidden" name="section_id" value="{{ sec['id'] }}">
+                <input type="text" name="section_name" value="{{ sec['name'] }}" class="section-name-input" required>
+                <button type="submit" class="btn btn-sm">Rename</button>
+              </form>
+              {% if sections|length > 1 %}
+                <form method="post" action="{{ url_for('checklist_edit') }}" style="display:inline;">
+                  <input type="hidden" name="action" value="delete_section">
+                  <input type="hidden" name="section_id" value="{{ sec['id'] }}">
+                  <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Remove this section? Items will move to another section.');">Remove section</button>
+                </form>
+              {% endif %}
+            </div>
+            {% if sec['items'] %}
+              <ol class="checklist-list">
+                {% for item in sec['items'] %}
+                  <li>
+                    <input type="hidden" name="order_{{ item['order_index'] }}" value="{{ item['id'] }}">
+                    <span class="checklist-text">{{ item['text'] }}</span>
+                    <button type="submit" form="reorder-form" name="delete_id" value="{{ item['id'] }}" class="btn btn-sm btn-danger" onclick="return confirm('Remove this item?');">Remove</button>
+                  </li>
+                {% endfor %}
+              </ol>
+            {% else %}
+              <p class="muted">No items in this section.</p>
+            {% endif %}
+            <form method="post" action="{{ url_for('checklist_edit') }}" class="add-item-inline">
+              <input type="hidden" name="action" value="add">
+              <input type="hidden" name="section_id" value="{{ sec['id'] }}">
+              <input type="text" name="new_text" placeholder="New criterion in {{ sec['name'] }}..." class="add-item-input">
+              <button type="submit" class="btn btn-sm">Add item</button>
+            </form>
+          </div>
+        {% endfor %}
+        <p><button type="submit" form="reorder-form" class="btn">Save order</button></p>
+      </form>
+    {% endif %}
+
+    <h3>Add section</h3>
+    <form method="post" action="{{ url_for('checklist_edit') }}">
+      <input type="hidden" name="action" value="add_section">
+      <input type="text" name="section_name" placeholder="Section name (e.g. Section 2)" required>
+      <button type="submit" class="btn">Add section</button>
+    </form>
+  </section>
+{% endblock %}

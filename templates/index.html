@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block title %}Runs – App UAT Reviews{% endblock %}
+{% block content %}
+  <h1>Test runs</h1>
+  <p><a href="{{ url_for('review_new') }}" class="btn btn-primary">New review</a></p>
+
+  <ul class="tabs">
+    <li class="tab{% if tab == 'active' %} active{% endif %}"><a href="{{ url_for('index', tab='active') }}">Active</a></li>
+    <li class="tab{% if tab == 'archived' %} active{% endif %}"><a href="{{ url_for('index', tab='archived') }}">Archived</a></li>
+  </ul>
+
+  {% if tab == 'active' %}
+    {% set reviews = reviews_active %}
+    {% if not reviews_active %}
+      <p class="muted">No active reviews. <a href="{{ url_for('checklist_edit') }}">Set up your checklist</a> first, then create a new review.</p>
+    {% else %}
+      <form method="post" action="{{ url_for('bulk_archive') }}" id="bulk-form">
+        <p class="bulk-actions">
+          <button type="submit" class="btn btn-secondary" name="action" value="archive">Archive selected</button>
+        </p>
+        <table class="runs-table">
+          <thead>
+            <tr>
+              <th class="col-checkbox"><input type="checkbox" id="select-all" title="Select all"></th>
+              <th>App name</th>
+              <th>App ID</th>
+              <th>Date</th>
+              <th>Progress</th>
+              <th>Status</th>
+              <th>Created</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in reviews %}
+              <tr>
+                <td class="col-checkbox"><input type="checkbox" name="review_ids" value="{{ r.id }}" class="review-checkbox"></td>
+                <td><a href="{{ url_for('review_detail', review_id=r.id) }}">{{ r.app_name }}</a></td>
+                <td>{{ r.app_id }}</td>
+                <td>{{ r.date }}</td>
+                <td>{{ r.progress }}</td>
+                <td><span class="status status-{{ r.status }}">{{ r.status_display }}</span></td>
+                <td>{{ r.created_at or '—' }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        <script>
+          document.getElementById('select-all').addEventListener('change', function() {
+            document.querySelectorAll('.review-checkbox').forEach(function(cb) { cb.checked = this.checked; }, this);
+          });
+        </script>
+      </form>
+    {% endif %}
+  {% else %}
+    {% set reviews = reviews_archived %}
+    {% if not reviews_archived %}
+      <p class="muted">No archived reviews.</p>
+    {% else %}
+      <form method="post" action="{{ url_for('bulk_unarchive') }}" id="bulk-form">
+        <p class="bulk-actions">
+          <button type="submit" class="btn btn-secondary" name="action" value="unarchive">Unarchive selected</button>
+          <button type="submit" id="bulk-delete-btn" class="btn btn-danger" name="action" value="delete" formaction="{{ url_for('bulk_delete') }}">Delete selected</button>
+        </p>
+        <table class="runs-table">
+          <thead>
+            <tr>
+              <th class="col-checkbox"><input type="checkbox" id="select-all" title="Select all"></th>
+              <th>App name</th>
+              <th>App ID</th>
+              <th>Date</th>
+              <th>Progress</th>
+              <th>Status</th>
+              <th>Created</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in reviews %}
+              <tr>
+                <td class="col-checkbox"><input type="checkbox" name="review_ids" value="{{ r.id }}" class="review-checkbox"></td>
+                <td><a href="{{ url_for('review_detail', review_id=r.id) }}">{{ r.app_name }}</a></td>
+                <td>{{ r.app_id }}</td>
+                <td>{{ r.date }}</td>
+                <td>{{ r.progress }}</td>
+                <td><span class="status status-{{ r.status }}">{{ r.status_display }}</span></td>
+                <td>{{ r.created_at or '—' }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        <script>
+          document.getElementById('select-all').addEventListener('change', function() {
+            document.querySelectorAll('.review-checkbox').forEach(function(cb) { cb.checked = this.checked; }, this);
+          });
+        </script>
+      </form>
+    {% endif %}
+  {% endif %}
+{% endblock %}
