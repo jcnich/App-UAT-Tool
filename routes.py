@@ -1,4 +1,7 @@
 """Flask routes for UAT Test Management Tool."""
+import csv
+from io import BytesIO, TextIOWrapper
+
 from flask import (
     abort,
     flash,
@@ -8,7 +11,6 @@ from flask import (
     send_file,
     url_for,
 )
-from io import BytesIO
 
 from database import RESULTS, get_db
 
@@ -141,6 +143,74 @@ def register_routes(app):
                         )
                     db.commit()
                     flash("Items added to section from pasted text.")
+                return redirect(url_for("checklist_edit"))
+            if action == "import_csv":
+                f = request.files.get("csv_file")
+                if not f or not f.filename or not f.filename.lower().endswith((".csv", ".txt")):
+                    flash("Please upload a CSV file.")
+                    return redirect(url_for("checklist_edit"))
+                try:
+                    stream = TextIOWrapper(f.stream, encoding="utf-8", errors="replace")
+                    reader = csv.DictReader(stream)
+                    if "section_name" not in reader.fieldnames or "criteria" not in reader.fieldnames:
+                        flash("CSV must have columns: section_name, criteria")
+                        return redirect(url_for("checklist_edit"))
+                except Exception:
+                    flash("Could not read CSV. Use UTF-8 and columns: section_name, criteria")
+                    return redirect(url_for("checklist_edit"))
+                db = get_db()
+                sections_by_name = {
+                    row["name"]: row["id"]
+                    for row in db.execute(
+                        "SELECT id, name FROM checklist_section"
+                    ).fetchall()
+                }
+                max_section_order = db.execute(
+                    "SELECT COALESCE(MAX(sort_order), -1) FROM checklist_section"
+                ).fetchone()[0] or -1
+                added = 0
+                skipped = 0
+                new_sections = 0
+                for row in reader:
+                    sec_name = (row.get("section_name") or "").strip()
+                    criteria_text = (row.get("criteria") or "").strip()
+                    if not sec_name or not criteria_text:
+                        continue
+                    if sec_name not in sections_by_name:
+                        max_section_order += 1
+                        cur = db.execute(
+                            "INSERT INTO checklist_section (sort_order, name) VALUES (?, ?)",
+                            (max_section_order, sec_name),
+                        )
+                        db.commit()
+                        sec_id = cur.lastrowid
+                        sections_by_name[sec_name] = sec_id
+                        new_sections += 1
+                    else:
+                        sec_id = sections_by_name[sec_name]
+                    exists = db.execute(
+                        "SELECT 1 FROM checklist WHERE section_id = ? AND text = ?",
+                        (sec_id, criteria_text),
+                    ).fetchone()
+                    if exists:
+                        skipped += 1
+                        continue
+                    max_order = db.execute(
+                        "SELECT COALESCE(MAX(sort_order), -1) FROM checklist WHERE section_id = ?",
+                        (sec_id,),
+                    ).fetchone()[0] or -1
+                    db.execute(
+                        "INSERT INTO checklist (section_id, sort_order, text) VALUES (?, ?, ?)",
+                        (sec_id, max_order + 1, criteria_text),
+                    )
+                    added += 1
+                db.commit()
+                msg = f"Imported {added} criteria."
+                if new_sections:
+                    msg += f" Created {new_sections} new section(s)."
+                if skipped:
+                    msg += f" Skipped {skipped} duplicate(s) (exact match in same section)."
+                flash(msg)
                 return redirect(url_for("checklist_edit"))
             if action == "add_section":
                 name = request.form.get("section_name", "").strip() or "Section"
