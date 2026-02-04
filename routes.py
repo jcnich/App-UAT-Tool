@@ -1,6 +1,6 @@
 """Flask routes for UAT Test Management Tool."""
 import csv
-from io import BytesIO, TextIOWrapper
+from io import BytesIO, StringIO, TextIOWrapper
 
 from flask import (
     abort,
@@ -150,11 +150,17 @@ def register_routes(app):
                     flash("Please upload a CSV file.")
                     return redirect(url_for("checklist_edit"))
                 try:
-                    stream = TextIOWrapper(f.stream, encoding="utf-8", errors="replace")
-                    reader = csv.DictReader(stream)
-                    if "section_name" not in reader.fieldnames or "criteria" not in reader.fieldnames:
+                    raw = f.read()
+                    text = raw.decode("utf-8-sig", errors="replace")
+                    reader = csv.DictReader(StringIO(text))
+                    fieldnames = list(reader.fieldnames or [])
+                    norm = lambda c: (c or "").strip().lstrip("\ufeff")
+                    normalized = [norm(k) for k in fieldnames]
+                    if "section_name" not in normalized or "criteria" not in normalized:
                         flash("CSV must have columns: section_name, criteria")
                         return redirect(url_for("checklist_edit"))
+                    section_key = next(k for k in fieldnames if norm(k) == "section_name")
+                    criteria_key = next(k for k in fieldnames if norm(k) == "criteria")
                 except Exception:
                     flash("Could not read CSV. Use UTF-8 and columns: section_name, criteria")
                     return redirect(url_for("checklist_edit"))
@@ -172,8 +178,8 @@ def register_routes(app):
                 skipped = 0
                 new_sections = 0
                 for row in reader:
-                    sec_name = (row.get("section_name") or "").strip()
-                    criteria_text = (row.get("criteria") or "").strip()
+                    sec_name = (row.get(section_key) or "").strip()
+                    criteria_text = (row.get(criteria_key) or "").strip()
                     if not sec_name or not criteria_text:
                         continue
                     if sec_name not in sections_by_name:
@@ -250,6 +256,76 @@ def register_routes(app):
                     db.execute("DELETE FROM checklist_section WHERE id = ?", (section_id,))
                     db.commit()
                     flash("Section removed. Items moved to another section.")
+                return redirect(url_for("checklist_edit"))
+            if action == "move_section":
+                section_id = request.form.get("section_id", type=int)
+                direction = request.form.get("direction")  # "up" or "down"
+                if section_id and direction in ("up", "down"):
+                    row = db.execute(
+                        "SELECT id, sort_order FROM checklist_section WHERE id = ?",
+                        (section_id,),
+                    ).fetchone()
+                    if row:
+                        current_order = row["sort_order"]
+                        if direction == "up":
+                            neighbour = db.execute(
+                                """SELECT id, sort_order FROM checklist_section
+                                   WHERE sort_order < ? ORDER BY sort_order DESC, id DESC LIMIT 1""",
+                                (current_order,),
+                            ).fetchone()
+                        else:
+                            neighbour = db.execute(
+                                """SELECT id, sort_order FROM checklist_section
+                                   WHERE sort_order > ? ORDER BY sort_order ASC, id ASC LIMIT 1""",
+                                (current_order,),
+                            ).fetchone()
+                        if neighbour:
+                            db.execute(
+                                "UPDATE checklist_section SET sort_order = ? WHERE id = ?",
+                                (neighbour["sort_order"], section_id),
+                            )
+                            db.execute(
+                                "UPDATE checklist_section SET sort_order = ? WHERE id = ?",
+                                (current_order, neighbour["id"]),
+                            )
+                            db.commit()
+                            flash("Section order updated.")
+                return redirect(url_for("checklist_edit"))
+            if action == "move_item":
+                item_id = request.form.get("item_id", type=int)
+                direction = request.form.get("direction")  # "up" or "down"
+                if item_id and direction in ("up", "down"):
+                    row = db.execute(
+                        "SELECT id, section_id, sort_order FROM checklist WHERE id = ?",
+                        (item_id,),
+                    ).fetchone()
+                    if row:
+                        sec_id, current_order = row["section_id"], row["sort_order"]
+                        if direction == "up":
+                            neighbour = db.execute(
+                                """SELECT id, sort_order FROM checklist
+                                   WHERE section_id = ? AND (sort_order < ? OR (sort_order = ? AND id < ?))
+                                   ORDER BY sort_order DESC, id DESC LIMIT 1""",
+                                (sec_id, current_order, current_order, item_id),
+                            ).fetchone()
+                        else:
+                            neighbour = db.execute(
+                                """SELECT id, sort_order FROM checklist
+                                   WHERE section_id = ? AND (sort_order > ? OR (sort_order = ? AND id > ?))
+                                   ORDER BY sort_order ASC, id ASC LIMIT 1""",
+                                (sec_id, current_order, current_order, item_id),
+                            ).fetchone()
+                        if neighbour:
+                            db.execute(
+                                "UPDATE checklist SET sort_order = ? WHERE id = ?",
+                                (neighbour["sort_order"], item_id),
+                            )
+                            db.execute(
+                                "UPDATE checklist SET sort_order = ? WHERE id = ?",
+                                (current_order, neighbour["id"]),
+                            )
+                            db.commit()
+                            flash("Item order updated.")
                 return redirect(url_for("checklist_edit"))
             delete_id = request.form.get("delete_id", type=int)
             if delete_id:

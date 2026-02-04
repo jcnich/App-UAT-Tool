@@ -335,6 +335,34 @@ h3 {
   margin-bottom: 0.5rem;
 }
 
+.section-move-buttons {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+}
+
+.item-move-buttons {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+}
+
+.inline-form {
+  display: inline;
+}
+
+.btn-icon {
+  min-width: 1.75rem;
+  padding: 0.25rem 0.4rem;
+  font-size: 0.9rem;
+  line-height: 1.2;
+}
+
+.btn-icon:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 .section-name-form {
   display: inline-flex;
   align-items: center;

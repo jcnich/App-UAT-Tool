@@ -41,6 +41,20 @@
         {% for sec in sections %}
           <div class="section-block">
             <div class="section-header">
+              <span class="section-move-buttons">
+                <form method="post" action="{{ url_for('checklist_edit') }}" class="inline-form">
+                  <input type="hidden" name="action" value="move_section">
+                  <input type="hidden" name="section_id" value="{{ sec['id'] }}">
+                  <input type="hidden" name="direction" value="up">
+                  <button type="submit" class="btn btn-sm btn-icon" title="Move section up" {% if loop.first %}disabled{% endif %}>↑</button>
+                </form>
+                <form method="post" action="{{ url_for('checklist_edit') }}" class="inline-form">
+                  <input type="hidden" name="action" value="move_section">
+                  <input type="hidden" name="section_id" value="{{ sec['id'] }}">
+                  <input type="hidden" name="direction" value="down">
+                  <button type="submit" class="btn btn-sm btn-icon" title="Move section down" {% if loop.last %}disabled{% endif %}>↓</button>
+                </form>
+              </span>
               <form method="post" action="{{ url_for('checklist_edit') }}" class="section-name-form">
                 <input type="hidden" name="action" value="rename_section">
                 <input type="hidden" name="section_id" value="{{ sec['id'] }}">
@@ -60,6 +74,20 @@
                 {% for item in sec['items'] %}
                   <li>
                     <input type="hidden" name="order_{{ item['order_index'] }}" value="{{ item['id'] }}">
+                    <span class="item-move-buttons">
+                      <form method="post" action="{{ url_for('checklist_edit') }}" class="inline-form">
+                        <input type="hidden" name="action" value="move_item">
+                        <input type="hidden" name="item_id" value="{{ item['id'] }}">
+                        <input type="hidden" name="direction" value="up">
+                        <button type="submit" class="btn btn-sm btn-icon" title="Move criterion up" {% if loop.first %}disabled{% endif %}>↑</button>
+                      </form>
+                      <form method="post" action="{{ url_for('checklist_edit') }}" class="inline-form">
+                        <input type="hidden" name="action" value="move_item">
+                        <input type="hidden" name="item_id" value="{{ item['id'] }}">
+                        <input type="hidden" name="direction" value="down">
+                        <button type="submit" class="btn btn-sm btn-icon" title="Move criterion down" {% if loop.last %}disabled{% endif %}>↓</button>
+                      </form>
+                    </span>
                     <span class="checklist-text">{{ item['text'] }}</span>
                     <button type="submit" form="reorder-form" name="delete_id" value="{{ item['id'] }}" class="btn btn-sm btn-danger" onclick="return confirm('Remove this item?');">Remove</button>
                   </li>
