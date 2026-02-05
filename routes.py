@@ -575,10 +575,22 @@ def register_routes(app):
                 if key.startswith("result_") and val in RESULTS:
                     cid = key[7:]
                     if cid.isdigit():
+                        attachment_val = request.form.get(f"attachment_{cid}", "").strip() or None
                         db.execute(
-                            """INSERT INTO review_result (review_id, checklist_id, result)
-                               VALUES (?, ?, ?) ON CONFLICT(review_id, checklist_id) DO UPDATE SET result = ?""",
-                            (review_id, int(cid), val, val),
+                            """INSERT INTO review_result (review_id, checklist_id, result, attachment)
+                               VALUES (?, ?, ?, ?) ON CONFLICT(review_id, checklist_id) DO UPDATE SET result = excluded.result, attachment = excluded.attachment""",
+                            (review_id, int(cid), val, attachment_val),
+                        )
+            for key, val in request.form.items():
+                if key.startswith("attachment_"):
+                    cid = key[11:]
+                    if cid.isdigit():
+                        checklist_id = int(cid)
+                        attachment_val = val.strip() or None
+                        db.execute(
+                            """INSERT INTO review_result (review_id, checklist_id, attachment)
+                               VALUES (?, ?, ?) ON CONFLICT(review_id, checklist_id) DO UPDATE SET attachment = excluded.attachment""",
+                            (review_id, checklist_id, attachment_val),
                         )
             db.commit()
 
@@ -603,11 +615,13 @@ def register_routes(app):
         if section_ids is not None:
             items = [row for row in items if row["section_id"] in section_ids]
         result_map = {}
+        attachment_map = {}
         for row in db.execute(
-            "SELECT checklist_id, result FROM review_result WHERE review_id = ?",
+            "SELECT checklist_id, result, attachment FROM review_result WHERE review_id = ?",
             (review_id,),
         ).fetchall():
             result_map[row["checklist_id"]] = row["result"]
+            attachment_map[row["checklist_id"]] = (row["attachment"] or "").strip()
 
         # Group by section
         sections_criteria = []
@@ -622,6 +636,7 @@ def register_routes(app):
                     "id": row["id"],
                     "text": row["text"],
                     "result": result_map.get(row["id"]),
+                    "attachment": attachment_map.get(row["id"], ""),
                 }
             )
         return render_template(
@@ -661,11 +676,13 @@ def register_routes(app):
         if section_ids is not None:
             items = [row for row in items if row["section_id"] in section_ids]
         result_map = {}
+        attachment_map = {}
         for row in db.execute(
-            "SELECT checklist_id, result FROM review_result WHERE review_id = ?",
+            "SELECT checklist_id, result, attachment FROM review_result WHERE review_id = ?",
             (review_id,),
         ).fetchall():
             result_map[row["checklist_id"]] = row["result"]
+            attachment_map[row["checklist_id"]] = (row["attachment"] or "").strip()
         sections_criteria = []
         current_sec = None
         for row in items:
@@ -674,7 +691,12 @@ def register_routes(app):
                 current_sec = {"name": sec_name, "items": []}
                 sections_criteria.append(current_sec)
             current_sec["items"].append(
-                {"id": row["id"], "text": row["text"], "result": result_map.get(row["id"])}
+                {
+                    "id": row["id"],
+                    "text": row["text"],
+                    "result": result_map.get(row["id"]),
+                    "attachment": attachment_map.get(row["id"], ""),
+                }
             )
         return render_template(
             "review_detail.html",
@@ -751,11 +773,13 @@ def register_routes(app):
         if section_ids is not None:
             items = [row for row in items if row["section_id"] in section_ids]
         result_map = {}
+        attachment_map = {}
         for row in db.execute(
-            "SELECT checklist_id, result FROM review_result WHERE review_id = ?",
+            "SELECT checklist_id, result, attachment FROM review_result WHERE review_id = ?",
             (review_id,),
         ).fetchall():
             result_map[row["checklist_id"]] = row["result"]
+            attachment_map[row["checklist_id"]] = (row["attachment"] or "").strip()
         sections_criteria = []
         current_sec = None
         for row in items:
@@ -764,7 +788,11 @@ def register_routes(app):
                 current_sec = {"name": sec_name, "items": []}
                 sections_criteria.append(current_sec)
             current_sec["items"].append(
-                {"text": row["text"], "result": result_map.get(row["id"])}
+                {
+                    "text": row["text"],
+                    "result": result_map.get(row["id"]),
+                    "attachment": attachment_map.get(row["id"], ""),
+                }
             )
         buf = build_pdf(review, sections_criteria)
         buf.seek(0)

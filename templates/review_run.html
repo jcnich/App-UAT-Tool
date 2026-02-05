@@ -32,6 +32,12 @@
                         <span class="result-{{ opt|lower }}">{{ opt }}</span>
                       </label>
                     {% endfor %}
+                    <span class="attach-wrap">
+                      <a href="#" class="attach-link" data-for="attach-field-{{ c.id }}" aria-expanded="{{ 'true' if c.attachment else 'false' }}">Attach</a>
+                      <span id="attach-field-{{ c.id }}" class="attach-field {% if not c.attachment %}attach-field-hidden{% endif %}">
+                        <input type="text" name="attachment_{{ c.id }}" value="{{ c.attachment }}" placeholder="URL or ticket #" class="attach-input" title="Screenshot URL or ticket reference">
+                      </span>
+                    </span>
                   </td>
                 </tr>
               {% endfor %}
@@ -47,4 +53,16 @@
   </section>
   {% endif %}
   <p><a href="{{ url_for('review_detail', review_id=review.id) }}">Back to review</a></p>
+
+  <script>
+    document.querySelectorAll('.attach-link').forEach(function(a) {
+      a.addEventListener('click', function(e) {
+        e.preventDefault();
+        var el = document.getElementById(a.getAttribute('data-for'));
+        if (!el) return;
+        el.classList.toggle('attach-field-hidden');
+        a.setAttribute('aria-expanded', el.classList.contains('attach-field-hidden') ? 'false' : 'true');
+      });
+    });
+  </script>
 {% endblock %}

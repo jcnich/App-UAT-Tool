@@ -29,6 +29,7 @@
               <th>#</th>
               <th>Criterion</th>
               <th>Result</th>
+              <th>Reference</th>
             </tr>
           </thead>
           <tbody>
@@ -37,6 +38,17 @@
                 <td>{{ loop.index }}</td>
                 <td>{{ c.text }}</td>
                 <td><span class="result-badge result-{{ (c.result or 'empty')|lower }}">{{ c.result or '—' }}</span></td>
+                <td class="reference-cell">
+                  {% if c.attachment %}
+                    {% if c.attachment.startswith('http://') or c.attachment.startswith('https://') %}
+                      <a href="{{ c.attachment }}" target="_blank" rel="noopener noreferrer">{{ c.attachment }}</a>
+                    {% else %}
+                      {{ c.attachment }}
+                    {% endif %}
+                  {% else %}
+                    —
+                  {% endif %}
+                </td>
               </tr>
             {% endfor %}
           </tbody>

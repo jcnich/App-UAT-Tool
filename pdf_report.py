@@ -231,28 +231,31 @@ def build_pdf(review, sections_criteria, header_title_position="right_top"):
 
     # ---- Criteria table: wide, small font, tight padding ----
     col_num = 0.35 * inch
-    col_criterion = content_width - col_num - 0.65 * inch
     col_result = 0.65 * inch
+    col_reference = 1.0 * inch
+    col_criterion = content_width - col_num - col_result - col_reference
 
     counts = {"Pass": 0, "Fail": 0, "Partial": 0, "NA": 0}
     global_idx = 1
     for section in sections_criteria:
         body.append(Paragraph(section.get("name", "General"), section_style))
         items = section.get("items", [])
-        table_data = [["#", "Criterion", "Result"]]
+        table_data = [["#", "Criterion", "Result", "Reference"]]
         result_styles = []  # (row_index, result_key) for color styling
         for c in items:
             raw_result = c.get("result") or ""
             if raw_result in counts:
                 counts[raw_result] += 1
             display_text, _ = RESULT_CONFIG.get(raw_result, ("—", colors.HexColor("#666666")))
-            table_data.append([str(global_idx), c.get("text", ""), display_text])
+            attachment = (c.get("attachment") or "").strip()
+            ref_cell = attachment if attachment else "—"
+            table_data.append([str(global_idx), c.get("text", ""), display_text, ref_cell])
             result_styles.append((len(table_data) - 1, raw_result))
             global_idx += 1
         if table_data:
             crit_table = Table(
                 table_data,
-                colWidths=[col_num, col_criterion, col_result],
+                colWidths=[col_num, col_criterion, col_result, col_reference],
                 repeatRows=1,
             )
             style_commands = [

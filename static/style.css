@@ -658,6 +658,40 @@ input[type="checkbox"]:focus {
 .result-badge.result-na { background: var(--bc-bg); color: var(--bc-text-muted); }
 .result-badge.result-empty { background: var(--bc-bg); color: var(--bc-text-light); }
 
+.attach-wrap {
+  display: inline-block;
+  margin-left: 0.5rem;
+  vertical-align: middle;
+}
+
+.attach-link {
+  color: var(--bc-primary);
+  text-decoration: underline;
+  font-size: 0.9rem;
+}
+
+.attach-link:hover {
+  color: var(--bc-primary-dark);
+}
+
+.attach-field {
+  display: inline-block;
+  margin-left: 0.35rem;
+}
+
+.attach-field-hidden {
+  display: none !important;
+}
+
+.attach-input {
+  width: 180px;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.85rem;
+  border: 1px solid var(--bc-border);
+  border-radius: var(--bc-radius);
+  font-family: inherit;
+}
+
 .actions {
   margin-top: 1.25rem;
 }
@@ -713,5 +747,21 @@ input[type="checkbox"]:focus {
 }
 
 .detail-actions a:not(.btn):hover {
+  text-decoration: underline;
+}
+
+.reference-cell {
+  max-width: 200px;
+  word-break: break-all;
+  font-size: 0.9rem;
+  color: var(--bc-text-muted);
+}
+
+.reference-cell a {
+  color: var(--bc-primary);
+  text-decoration: none;
+}
+
+.reference-cell a:hover {
   text-decoration: underline;
 }

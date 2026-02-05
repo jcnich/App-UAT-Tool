@@ -117,6 +117,7 @@ def init_db(app=None):
             review_id INTEGER NOT NULL,
             checklist_id INTEGER NOT NULL,
             result TEXT CHECK (result IN ('Pass', 'Fail', 'Partial', 'NA')),
+            attachment TEXT,
             FOREIGN KEY (review_id) REFERENCES review (id) ON DELETE CASCADE,
             FOREIGN KEY (checklist_id) REFERENCES checklist (id) ON DELETE CASCADE,
             UNIQUE (review_id, checklist_id)
@@ -139,6 +140,13 @@ def init_db(app=None):
     cols = [row[1] for row in cur.fetchall()]
     if "is_default" not in cols:
         conn.execute("ALTER TABLE checklist_section ADD COLUMN is_default INTEGER NOT NULL DEFAULT 1")
+        conn.commit()
+
+    # Migration: add attachment to review_result if missing (existing DBs)
+    cur = conn.execute("PRAGMA table_info(review_result)")
+    cols = [row[1] for row in cur.fetchall()]
+    if "attachment" not in cols:
+        conn.execute("ALTER TABLE review_result ADD COLUMN attachment TEXT")
         conn.commit()
 
     # Migration: add section_id to checklist if missing (existing DBs)
