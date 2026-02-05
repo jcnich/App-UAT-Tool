@@ -584,6 +584,21 @@ input[type="checkbox"]:focus {
   color: var(--bc-danger);
 }
 
+.section-select-actions {
+  margin: 0.5rem 0;
+}
+.section-select-actions .btn + .btn {
+  margin-left: 0.5rem;
+}
+.section-checkbox-list {
+  list-style: none;
+  padding-left: 0;
+  margin: 0.5rem 0 1rem 0;
+}
+.section-checkbox-list li {
+  margin: 0.35rem 0;
+}
+
 .muted {
   color: var(--bc-text-muted);
   font-size: 0.9rem;

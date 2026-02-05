@@ -83,7 +83,8 @@ def init_db(app=None):
         CREATE TABLE IF NOT EXISTS checklist_section (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             sort_order INTEGER NOT NULL DEFAULT 0,
-            name TEXT NOT NULL DEFAULT 'Section'
+            name TEXT NOT NULL DEFAULT 'Section',
+            is_default INTEGER NOT NULL DEFAULT 1
         );
 
         CREATE TABLE IF NOT EXISTS checklist (
@@ -105,6 +106,12 @@ def init_db(app=None):
             created_at TEXT NOT NULL DEFAULT (datetime('now'))
         );
 
+        CREATE TABLE IF NOT EXISTS review_section (
+            review_id INTEGER NOT NULL REFERENCES review (id) ON DELETE CASCADE,
+            section_id INTEGER NOT NULL REFERENCES checklist_section (id) ON DELETE CASCADE,
+            PRIMARY KEY (review_id, section_id)
+        );
+
         CREATE TABLE IF NOT EXISTS review_result (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             review_id INTEGER NOT NULL,
@@ -121,9 +128,18 @@ def init_db(app=None):
         CREATE INDEX IF NOT EXISTS idx_review_created ON review (created_at);
         CREATE INDEX IF NOT EXISTS idx_review_archived ON review (archived);
         CREATE INDEX IF NOT EXISTS idx_checklist_section ON checklist (section_id);
+        CREATE INDEX IF NOT EXISTS idx_review_section_review ON review_section (review_id);
+        CREATE INDEX IF NOT EXISTS idx_review_section_section ON review_section (section_id);
         """
     )
     conn.commit()
+
+    # Migration: add is_default to checklist_section if missing (existing DBs)
+    cur = conn.execute("PRAGMA table_info(checklist_section)")
+    cols = [row[1] for row in cur.fetchall()]
+    if "is_default" not in cols:
+        conn.execute("ALTER TABLE checklist_section ADD COLUMN is_default INTEGER NOT NULL DEFAULT 1")
+        conn.commit()
 
     # Migration: add section_id to checklist if missing (existing DBs)
     cur = conn.execute("PRAGMA table_info(checklist)")

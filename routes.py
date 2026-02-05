@@ -18,6 +18,15 @@ from database import RESULTS, get_db
 def register_routes(app):
     """Register all routes on the Flask app."""
 
+    def _get_review_section_ids(db, review_id):
+        """Return set of section_id for this review, or None meaning 'all sections' (backward compat)."""
+        rows = db.execute(
+            "SELECT section_id FROM review_section WHERE review_id = ?", (review_id,)
+        ).fetchall()
+        if not rows:
+            return None
+        return {row["section_id"] for row in rows}
+
     def _build_reviews_list(rows):
         """Build list of review dicts with progress and status_display."""
         status_display_map = {
@@ -58,7 +67,7 @@ def register_routes(app):
         base_sql = """
             SELECT r.id, r.app_name, r.app_id, r.date, r.status, r.created_at,
                    (SELECT COUNT(*) FROM review_result rr WHERE rr.review_id = r.id AND rr.result IS NOT NULL) AS filled,
-                   (SELECT COUNT(*) FROM checklist) AS total
+                   (SELECT COUNT(*) FROM review_result rr WHERE rr.review_id = r.id) AS total
             FROM review r
             WHERE r.archived = ?
             ORDER BY r.created_at DESC
@@ -371,9 +380,20 @@ def register_routes(app):
                     db.commit()
                     flash("Item added.")
                 return redirect(url_for("checklist_edit"))
+            if action == "set_section_default":
+                section_id = request.form.get("section_id", type=int)
+                is_default = request.form.get("is_default", "0") == "1"
+                if section_id is not None:
+                    db.execute(
+                        "UPDATE checklist_section SET is_default = ? WHERE id = ?",
+                        (1 if is_default else 0, section_id),
+                    )
+                    db.commit()
+                    flash("Default section setting updated.")
+                return redirect(url_for("checklist_edit"))
 
         sections = db.execute(
-            "SELECT id, sort_order, name FROM checklist_section ORDER BY sort_order, id"
+            "SELECT id, sort_order, name, COALESCE(is_default, 1) AS is_default FROM checklist_section ORDER BY sort_order, id"
         ).fetchall()
         items = db.execute(
             "SELECT id, section_id, sort_order, text FROM checklist ORDER BY sort_order, id"
@@ -387,7 +407,13 @@ def register_routes(app):
                 it["order_index"] = order_index
                 order_index += 1
             sections_with_items.append(
-                {"id": sec["id"], "sort_order": sec["sort_order"], "name": sec["name"], "items": sec_items}
+                {
+                    "id": sec["id"],
+                    "sort_order": sec["sort_order"],
+                    "name": sec["name"],
+                    "is_default": bool(sec["is_default"]),
+                    "items": sec_items,
+                }
             )
         return render_template(
             "checklist_edit.html",
@@ -397,11 +423,11 @@ def register_routes(app):
 
     @app.route("/review/new", methods=["GET", "POST"])
     def review_new():
-        """New review step 1: app metadata. GET ?from_id=N pre-fills from review N (re-review)."""
+        """New review: step 1 = app metadata, step 2 = select sections. GET ?from_id=N pre-fills from review N (re-review)."""
+        db = get_db()
         from_id = request.args.get("from_id", type=int)
         prefill = None
         if from_id:
-            db = get_db()
             r = db.execute(
                 "SELECT app_name, app_id, date, app_owner_email, overall_notes FROM review WHERE id = ?",
                 (from_id,),
@@ -410,45 +436,125 @@ def register_routes(app):
                 prefill = dict(r)
 
         if request.method == "POST":
+            action = request.form.get("action")
             app_name = request.form.get("app_name", "").strip()
             app_id = request.form.get("app_id", "").strip()
             date = request.form.get("date", "").strip()
             app_owner_email = request.form.get("app_owner_email", "").strip()
             overall_notes = request.form.get("overall_notes", "").strip()
-            if not app_name or not app_id or not date:
-                flash("App name, App ID, and Date are required.")
+            prefill_data = {
+                "app_name": app_name,
+                "app_id": app_id,
+                "date": date,
+                "app_owner_email": app_owner_email,
+                "overall_notes": overall_notes,
+            }
+
+            if action == "next":
+                if not app_name or not app_id or not date:
+                    flash("App name, App ID, and Date are required.")
+                    return render_template(
+                        "review_new.html",
+                        prefill=prefill_data,
+                        step=1,
+                        from_id=from_id,
+                        active_page="review_new",
+                    )
+                sections = db.execute(
+                    "SELECT id, sort_order, name, is_default FROM checklist_section ORDER BY sort_order, id"
+                ).fetchall()
+                selected_ids = None
+                if from_id:
+                    selected_ids = _get_review_section_ids(db, from_id)
+                if selected_ids is None:
+                    selected_ids = {row["id"] for row in sections if row["is_default"]}
+                    if not selected_ids:
+                        selected_ids = {row["id"] for row in sections}
+                sections_for_step2 = [
+                    {
+                        "id": row["id"],
+                        "name": row["name"],
+                        "selected": row["id"] in selected_ids,
+                    }
+                    for row in sections
+                ]
                 return render_template(
                     "review_new.html",
-                    prefill={
-                        "app_name": app_name,
-                        "app_id": app_id,
-                        "date": date,
-                        "app_owner_email": app_owner_email,
-                        "overall_notes": overall_notes,
-                    },
+                    prefill=prefill_data,
+                    step=2,
+                    from_id=from_id,
+                    sections=sections_for_step2,
                     active_page="review_new",
                 )
-            db = get_db()
-            cur = db.execute(
-                """INSERT INTO review (app_name, app_id, date, app_owner_email, overall_notes, status)
-                   VALUES (?, ?, ?, ?, ?, 'in_progress')""",
-                (app_name, app_id, date, app_owner_email, overall_notes),
-            )
-            db.commit()
-            review_id = cur.lastrowid
-            # Create empty result rows for each checklist item
-            items = db.execute("SELECT id FROM checklist ORDER BY sort_order, id").fetchall()
-            for item in items:
-                db.execute(
-                    "INSERT OR IGNORE INTO review_result (review_id, checklist_id) VALUES (?, ?)",
-                    (review_id, item["id"]),
+
+            if action == "create":
+                section_ids = request.form.getlist("section_ids", type=int)
+                if not app_name or not app_id or not date:
+                    flash("App name, App ID, and Date are required.")
+                    return render_template(
+                        "review_new.html",
+                        prefill=prefill_data,
+                        step=1,
+                        from_id=from_id,
+                        active_page="review_new",
+                    )
+                if not section_ids:
+                    flash("Select at least one section for this review.")
+                    sections = db.execute(
+                        "SELECT id, sort_order, name, is_default FROM checklist_section ORDER BY sort_order, id"
+                    ).fetchall()
+                    selected_ids = None
+                    if from_id:
+                        selected_ids = _get_review_section_ids(db, from_id)
+                    if selected_ids is None:
+                        selected_ids = {row["id"] for row in sections if row["is_default"]}
+                        if not selected_ids:
+                            selected_ids = {row["id"] for row in sections}
+                    sections_for_step2 = [
+                        {"id": row["id"], "name": row["name"], "selected": row["id"] in selected_ids}
+                        for row in sections
+                    ]
+                    return render_template(
+                        "review_new.html",
+                        prefill=prefill_data,
+                        step=2,
+                        from_id=from_id,
+                        sections=sections_for_step2,
+                        active_page="review_new",
+                    )
+                cur = db.execute(
+                    """INSERT INTO review (app_name, app_id, date, app_owner_email, overall_notes, status)
+                       VALUES (?, ?, ?, ?, ?, 'in_progress')""",
+                    (app_name, app_id, date, app_owner_email, overall_notes),
                 )
-            db.commit()
-            return redirect(url_for("review_run", review_id=review_id))
+                db.commit()
+                review_id = cur.lastrowid
+                for sid in section_ids:
+                    db.execute(
+                        "INSERT INTO review_section (review_id, section_id) VALUES (?, ?)",
+                        (review_id, sid),
+                    )
+                db.commit()
+                placeholders = ",".join("?" * len(section_ids))
+                items = db.execute(
+                    "SELECT id FROM checklist WHERE section_id IN ({}) ORDER BY sort_order, id".format(
+                        placeholders
+                    ),
+                    section_ids,
+                ).fetchall()
+                for item in items:
+                    db.execute(
+                        "INSERT OR IGNORE INTO review_result (review_id, checklist_id) VALUES (?, ?)",
+                        (review_id, item["id"]),
+                    )
+                db.commit()
+                return redirect(url_for("review_run", review_id=review_id))
 
         return render_template(
             "review_new.html",
             prefill=prefill,
+            step=1,
+            from_id=from_id,
             active_page="review_new",
         )
 
@@ -493,6 +599,9 @@ def register_routes(app):
                LEFT JOIN checklist_section s ON c.section_id = s.id
                ORDER BY s.sort_order, s.id, c.sort_order, c.id"""
         ).fetchall()
+        section_ids = _get_review_section_ids(db, review_id)
+        if section_ids is not None:
+            items = [row for row in items if row["section_id"] in section_ids]
         result_map = {}
         for row in db.execute(
             "SELECT checklist_id, result FROM review_result WHERE review_id = ?",
@@ -543,11 +652,14 @@ def register_routes(app):
         review["status_display"] = status_display_map.get(review["status"], review["status"])
 
         items = db.execute(
-            """SELECT c.id, c.sort_order, c.text, s.name AS section_name, s.sort_order AS section_order
+            """SELECT c.id, c.sort_order, c.text, c.section_id, s.name AS section_name, s.sort_order AS section_order
                FROM checklist c
                LEFT JOIN checklist_section s ON c.section_id = s.id
                ORDER BY s.sort_order, s.id, c.sort_order, c.id"""
         ).fetchall()
+        section_ids = _get_review_section_ids(db, review_id)
+        if section_ids is not None:
+            items = [row for row in items if row["section_id"] in section_ids]
         result_map = {}
         for row in db.execute(
             "SELECT checklist_id, result FROM review_result WHERE review_id = ?",
@@ -573,30 +685,12 @@ def register_routes(app):
 
     @app.route("/review/<int:review_id>/re-review", methods=["POST"])
     def re_review(review_id):
-        """Create a new review with metadata copied from this one; redirect to new review run."""
+        """Redirect to New review with from_id so user can confirm metadata and sections, then create new run."""
         db = get_db()
-        r = db.execute(
-            "SELECT app_name, app_id, date, app_owner_email, overall_notes FROM review WHERE id = ?",
-            (review_id,),
-        ).fetchone()
+        r = db.execute("SELECT id FROM review WHERE id = ?", (review_id,)).fetchone()
         if not r:
             abort(404)
-        cur = db.execute(
-            """INSERT INTO review (app_name, app_id, date, app_owner_email, overall_notes, status)
-               VALUES (?, ?, ?, ?, ?, 'in_progress')""",
-            (r["app_name"], r["app_id"], r["date"], r["app_owner_email"], r["overall_notes"] or ""),
-        )
-        db.commit()
-        new_id = cur.lastrowid
-        items = db.execute("SELECT id FROM checklist ORDER BY sort_order, id").fetchall()
-        for item in items:
-            db.execute(
-                "INSERT OR IGNORE INTO review_result (review_id, checklist_id) VALUES (?, ?)",
-                (new_id, item["id"]),
-            )
-        db.commit()
-        flash("New review created. Complete the checklist.")
-        return redirect(url_for("review_run", review_id=new_id))
+        return redirect(url_for("review_new", from_id=review_id))
 
     @app.route("/review/<int:review_id>/approve", methods=["POST"])
     def approve(review_id):
@@ -648,11 +742,14 @@ def register_routes(app):
             abort(404)
         review = dict(review)
         items = db.execute(
-            """SELECT c.id, c.sort_order, c.text, s.name AS section_name, s.sort_order AS section_order
+            """SELECT c.id, c.sort_order, c.text, c.section_id, s.name AS section_name, s.sort_order AS section_order
                FROM checklist c
                LEFT JOIN checklist_section s ON c.section_id = s.id
                ORDER BY s.sort_order, s.id, c.sort_order, c.id"""
         ).fetchall()
+        section_ids = _get_review_section_ids(db, review_id)
+        if section_ids is not None:
+            items = [row for row in items if row["section_id"] in section_ids]
         result_map = {}
         for row in db.execute(
             "SELECT checklist_id, result FROM review_result WHERE review_id = ?",

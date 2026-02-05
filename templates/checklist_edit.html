@@ -66,6 +66,14 @@
                 <input type="text" name="section_name" value="{{ sec['name'] }}" class="section-name-input" required>
                 <button type="submit" class="btn btn-sm">Rename</button>
               </form>
+              <form method="post" action="{{ url_for('checklist_edit') }}" class="inline-form">
+                <input type="hidden" name="action" value="set_section_default">
+                <input type="hidden" name="section_id" value="{{ sec['id'] }}">
+                <label class="checklist-checkbox-wrap" title="When checked, this section is selected by default when starting a new review">
+                  <input type="checkbox" name="is_default" value="1" {% if sec.is_default %}checked{% endif %} onchange="this.form.submit()">
+                  <span class="checklist-checkbox-label">Default</span>
+                </label>
+              </form>
               {% if sections|length > 1 %}
                 <form method="post" action="{{ url_for('checklist_edit') }}" style="display:inline;">
                   <input type="hidden" name="action" value="delete_section">
