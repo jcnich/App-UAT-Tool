@@ -15,6 +15,7 @@
     <dd>{{ review.created_at or '—' }}</dd>
   </dl>
 
+  <section class="card">
   <h2>Checklist results</h2>
   {% if not sections_criteria %}
     <p class="muted">No criteria. <a href="{{ url_for('review_run', review_id=review.id) }}">Run checklist</a> to add results.</p>
@@ -43,7 +44,9 @@
       </div>
     {% endfor %}
   {% endif %}
+  </section>
 
+  <section class="card">
   <div class="detail-actions">
     <a href="{{ url_for('pdf_export', review_id=review.id) }}" class="btn btn-primary">Export PDF</a>
     <form method="post" action="{{ url_for('re_review', review_id=review.id) }}" style="display:inline;">
@@ -70,4 +73,5 @@
     <a href="{{ url_for('review_run', review_id=review.id) }}" class="btn">Edit checklist results</a>
     <a href="{{ url_for('index', tab='archived' if review.archived else 'active') }}">Back to runs</a>
   </div>
+  </section>
 {% endblock %}

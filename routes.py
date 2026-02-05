@@ -72,6 +72,7 @@ def register_routes(app):
             reviews_active=reviews_active,
             reviews_archived=reviews_archived,
             tab=tab,
+            active_page="index",
         )
 
     @app.route("/bulk-archive", methods=["POST"])
@@ -327,11 +328,19 @@ def register_routes(app):
                             db.commit()
                             flash("Item order updated.")
                 return redirect(url_for("checklist_edit"))
-            delete_id = request.form.get("delete_id", type=int)
-            if delete_id:
-                db.execute("DELETE FROM checklist WHERE id = ?", (delete_id,))
-                db.commit()
-                flash("Item removed.")
+            if action == "remove_items":
+                delete_ids = request.form.getlist("delete_ids", type=int)
+                if delete_ids:
+                    placeholders = ",".join("?" * len(delete_ids))
+                    db.execute(
+                        f"DELETE FROM checklist WHERE id IN ({placeholders})",
+                        delete_ids,
+                    )
+                    db.commit()
+                    n = len(delete_ids)
+                    flash(f"Removed {n} item(s)." if n != 1 else "Item removed.")
+                else:
+                    flash("No criteria selected.")
                 return redirect(url_for("checklist_edit"))
             if action == "reorder":
                 order_keys = sorted(
@@ -383,6 +392,7 @@ def register_routes(app):
         return render_template(
             "checklist_edit.html",
             sections=sections_with_items,
+            active_page="checklist_edit",
         )
 
     @app.route("/review/new", methods=["GET", "POST"])
@@ -416,6 +426,7 @@ def register_routes(app):
                         "app_owner_email": app_owner_email,
                         "overall_notes": overall_notes,
                     },
+                    active_page="review_new",
                 )
             db = get_db()
             cur = db.execute(
@@ -435,7 +446,11 @@ def register_routes(app):
             db.commit()
             return redirect(url_for("review_run", review_id=review_id))
 
-        return render_template("review_new.html", prefill=prefill)
+        return render_template(
+            "review_new.html",
+            prefill=prefill,
+            active_page="review_new",
+        )
 
     @app.route("/review/<int:review_id>/run", methods=["GET", "POST"])
     def review_run(review_id):
@@ -505,6 +520,7 @@ def register_routes(app):
             review=dict(review),
             sections_criteria=sections_criteria,
             results_options=RESULTS,
+            active_page="index",
         )
 
     @app.route("/review/<int:review_id>")
@@ -549,7 +565,10 @@ def register_routes(app):
                 {"id": row["id"], "text": row["text"], "result": result_map.get(row["id"])}
             )
         return render_template(
-            "review_detail.html", review=review, sections_criteria=sections_criteria
+            "review_detail.html",
+            review=review,
+            sections_criteria=sections_criteria,
+            active_page="index",
         )
 
     @app.route("/review/<int:review_id>/re-review", methods=["POST"])

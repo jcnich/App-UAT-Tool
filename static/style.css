@@ -11,7 +11,7 @@
   --bc-text-light: #8C93AD;
   --bc-white: #FFFFFF;
   /* Fills */
-  --bc-bg: #F6F7FC;
+  --bc-bg: #F7F7FC;
   --bc-bg-panel: #ECEEF5;
   --bc-border: #D9DCE9;
   --bc-border-mid: #B4BAD1;
@@ -24,10 +24,15 @@
   --bc-warning-bg: #FFF9E6;
   /* Brand */
   --bc-brand: #273A8A;
-  /* Layout */
+  /* Layout - Staff Center style */
+  --bc-header-bg: #2d3139;
+  --bc-sidebar-bg: #EDEEF5;
+  --bc-sidebar-text: #313440;
+  --bc-sidebar-text-active: #313440;
+  --bc-sidebar-active-bg: #E1E3ED;
   --bc-radius: 6px;
   --bc-shadow: 0 1px 3px rgba(49, 52, 64, 0.08);
-  --bc-shadow-card: 0 2px 8px rgba(49, 52, 64, 0.06);
+  --bc-shadow-card: 0 2px 8px rgba(49, 52, 64, 0.08);
 }
 
 * {
@@ -41,50 +46,108 @@ body {
   color: var(--bc-text);
   font-size: 15px;
   line-height: 1.5;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
 }
 
-.nav {
-  background: var(--bc-brand);
+/* Top bar - Staff Center style (dark gray/charcoal, 60px) */
+.app-header {
+  background: var(--bc-header-bg);
   padding: 0 1.5rem;
+  min-height: 60px;
   display: flex;
   align-items: center;
-  gap: 1.5rem;
-  min-height: 52px;
+  justify-content: space-between;
+  flex-shrink: 0;
   box-shadow: var(--bc-shadow);
 }
 
-.nav-logo {
-  font-weight: 700;
-  font-size: 1.1rem;
-  letter-spacing: 0.02em;
-  margin-right: 0.5rem;
+.app-header-title {
+  font-family: "Source Sans Pro", "Helvetica Neue", Arial, sans-serif;
+  font-size: 1.5rem;
+  font-weight: 400;
+  line-height: 2rem;
+  margin: 0;
+  color: rgb(246, 247, 252);
 }
 
-.nav a {
-  color: var(--bc-white);
+/* Layout: sidebar + main */
+.app-layout {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+/* Left sidebar - Staff Center style */
+.app-sidebar {
+  width: 240px;
+  flex-shrink: 0;
+  background: var(--bc-sidebar-bg);
+  padding: 1rem 0;
+}
+
+.app-sidebar-nav {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.app-sidebar-nav li {
+  margin: 0;
+}
+
+.app-sidebar-nav a {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 1.25rem;
+  color: var(--bc-sidebar-text);
   text-decoration: none;
   font-weight: 500;
-  padding: 0.5rem 0;
+  font-size: 0.95rem;
+  transition: background 0.15s, color 0.15s;
 }
 
-.nav a:hover {
-  opacity: 0.9;
+.app-sidebar-nav a:hover {
+  color: var(--bc-sidebar-text-active);
+  background: var(--bc-sidebar-active-bg);
 }
 
-.main {
-  max-width: 960px;
-  margin: 0 auto;
-  padding: 1.5rem 2rem;
-  background: var(--bc-white);
-  min-height: calc(100vh - 52px);
-  box-shadow: var(--bc-shadow-card);
-}
-
-h1 {
-  margin-top: 0;
-  font-size: 1.5rem;
+.app-sidebar-nav a.active {
+  color: var(--bc-primary);
+  background: var(--bc-sidebar-active-bg);
   font-weight: 600;
-  color: var(--bc-text);
+}
+
+.app-sidebar-nav .nav-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  flex-shrink: 0;
+  opacity: 0.85;
+}
+
+.app-sidebar-nav a.active .nav-icon {
+  opacity: 1;
+}
+
+/* Main content - light gray, no white box */
+.main {
+  flex: 1;
+  padding: 1.5rem 2rem;
+  background: var(--bc-bg);
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* Staff Center page headers */
+.main h1 {
+  font-family: "Source Sans Pro", "Helvetica Neue", Arial, sans-serif;
+  font-size: 2rem;
+  font-weight: 300;
+  line-height: 2.5rem;
+  margin: 0 0 1.5rem;
+  color: rgb(49, 52, 64);
 }
 
 h2 {
@@ -310,9 +373,10 @@ h3 {
 }
 
 .card {
-  background: var(--bc-bg);
+  background: var(--bc-white);
   border: 1px solid var(--bc-border);
   border-radius: var(--bc-radius);
+  box-shadow: var(--bc-shadow-card);
   padding: 1.25rem 1.5rem;
   margin-bottom: 1.5rem;
 }
@@ -422,6 +486,31 @@ select {
   color: var(--bc-text);
 }
 
+/* Big Design–aligned focus states */
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--bc-primary);
+  box-shadow: 0 0 0 2px var(--bc-primary-light);
+}
+
+/* Big Design–aligned checkboxes */
+input[type="checkbox"].checklist-item-cb,
+#select-all-criteria {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  cursor: pointer;
+  accent-color: var(--bc-primary);
+  flex-shrink: 0;
+}
+
+input[type="checkbox"]:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--bc-primary-light);
+}
+
 .checklist-list {
   padding-left: 1.5rem;
   margin: 0.5rem 0;
@@ -438,6 +527,38 @@ select {
 .checklist-text {
   flex: 1;
   min-width: 0;
+}
+
+.checklist-select-all {
+  margin-bottom: 0.75rem;
+}
+
+.checklist-bulk-actions {
+  margin-top: 1rem;
+}
+
+.checklist-bulk-actions .btn + .btn {
+  margin-left: 0.5rem;
+}
+
+.checklist-checkbox-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .form-card label {

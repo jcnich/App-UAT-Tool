@@ -6,27 +6,51 @@
   <title>{% block title %}App UAT Reviews{% endblock %}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&family=Source+Sans+Pro:wght@300;400;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-  <nav class="nav">
-    <a href="{{ url_for('index') }}" class="nav-logo">App UAT Reviews</a>
-    <a href="{{ url_for('index') }}">Runs</a>
-    <a href="{{ url_for('review_new') }}">New review</a>
-    <a href="{{ url_for('checklist_edit') }}">Checklist</a>
-  </nav>
-  <main class="main">
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        <ul class="flash">
-          {% for category, msg in messages %}
-            <li class="flash-{{ category or 'message' }}">{{ msg }}</li>
-          {% endfor %}
+  <header class="app-header">
+    <h1 class="app-header-title">App UAT Reviews</h1>
+  </header>
+  {% set active_page = active_page|default('index') %}
+  <div class="app-layout">
+    <aside class="app-sidebar">
+      <nav>
+        <ul class="app-sidebar-nav">
+          <li>
+            <a href="{{ url_for('index') }}" class="{% if active_page == 'index' %}active{% endif %}">
+              <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+              Runs
+            </a>
+          </li>
+          <li>
+            <a href="{{ url_for('review_new') }}" class="{% if active_page == 'review_new' %}active{% endif %}">
+              <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              New review
+            </a>
+          </li>
+          <li>
+            <a href="{{ url_for('checklist_edit') }}" class="{% if active_page == 'checklist_edit' %}active{% endif %}">
+              <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+              Checklist
+            </a>
+          </li>
         </ul>
-      {% endif %}
-    {% endwith %}
-    {% block content %}{% endblock %}
-  </main>
+      </nav>
+    </aside>
+    <main class="main">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <ul class="flash">
+            {% for category, msg in messages %}
+              <li class="flash-{{ category or 'message' }}">{{ msg }}</li>
+            {% endfor %}
+          </ul>
+        {% endif %}
+      {% endwith %}
+      {% block content %}{% endblock %}
+    </main>
+  </div>
 </body>
 </html>

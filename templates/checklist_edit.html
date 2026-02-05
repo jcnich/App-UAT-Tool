@@ -37,7 +37,12 @@
       <p class="muted">No sections yet. Add a section below.</p>
     {% else %}
       <form method="post" action="{{ url_for('checklist_edit') }}" id="reorder-form">
-        <input type="hidden" name="action" value="reorder">
+        <p class="checklist-select-all">
+          <label class="checklist-checkbox-wrap">
+            <input type="checkbox" id="select-all-criteria" title="Select all criteria">
+            <span class="checklist-checkbox-label">Select all</span>
+          </label>
+        </p>
         {% for sec in sections %}
           <div class="section-block">
             <div class="section-header">
@@ -74,6 +79,10 @@
                 {% for item in sec['items'] %}
                   <li>
                     <input type="hidden" name="order_{{ item['order_index'] }}" value="{{ item['id'] }}">
+                    <label class="checklist-checkbox-wrap checklist-checkbox-row">
+                      <input type="checkbox" name="delete_ids" value="{{ item['id'] }}" class="checklist-item-cb" aria-label="Select criterion for removal">
+                      <span class="checklist-checkbox-label sr-only">Select</span>
+                    </label>
                     <span class="item-move-buttons">
                       <form method="post" action="{{ url_for('checklist_edit') }}" class="inline-form">
                         <input type="hidden" name="action" value="move_item">
@@ -89,7 +98,6 @@
                       </form>
                     </span>
                     <span class="checklist-text">{{ item['text'] }}</span>
-                    <button type="submit" form="reorder-form" name="delete_id" value="{{ item['id'] }}" class="btn btn-sm btn-danger" onclick="return confirm('Remove this item?');">Remove</button>
                   </li>
                 {% endfor %}
               </ol>
@@ -104,7 +112,15 @@
             </form>
           </div>
         {% endfor %}
-        <p><button type="submit" form="reorder-form" class="btn">Save order</button></p>
+        <p class="checklist-bulk-actions">
+          <button type="submit" form="reorder-form" name="action" value="reorder" class="btn">Save order</button>
+          <button type="submit" form="reorder-form" name="action" value="remove_items" class="btn btn-danger" id="remove-selected-btn" onclick="return confirm('Remove selected criteria?');">Remove</button>
+        </p>
+        <script>
+          document.getElementById('select-all-criteria') && document.getElementById('select-all-criteria').addEventListener('change', function() {
+            document.querySelectorAll('.checklist-item-cb').forEach(function(cb) { cb.checked = this.checked; }, this);
+          });
+        </script>
       </form>
     {% endif %}
 

@@ -4,6 +4,7 @@
   <h1>Test runs</h1>
   <p><a href="{{ url_for('review_new') }}" class="btn btn-primary">New review</a></p>
 
+  <section class="card">
   <ul class="tabs">
     <li class="tab{% if tab == 'active' %} active{% endif %}"><a href="{{ url_for('index', tab='active') }}">Active</a></li>
     <li class="tab{% if tab == 'archived' %} active{% endif %}"><a href="{{ url_for('index', tab='archived') }}">Archived</a></li>
@@ -95,4 +96,5 @@
       </form>
     {% endif %}
   {% endif %}
+  </section>
 {% endblock %}

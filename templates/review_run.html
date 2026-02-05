@@ -7,6 +7,7 @@
   {% if not sections_criteria %}
     <p class="muted">No checklist items. <a href="{{ url_for('checklist_edit') }}">Add criteria</a> first.</p>
   {% else %}
+  <section class="card">
     <form method="post" action="{{ url_for('review_run', review_id=review.id) }}">
       {% for sec in sections_criteria %}
         <div class="criteria-section">
@@ -43,6 +44,7 @@
         <button type="submit" name="action" value="finish" class="btn btn-primary">Finish review</button>
       </p>
     </form>
+  </section>
   {% endif %}
   <p><a href="{{ url_for('review_detail', review_id=review.id) }}">Back to review</a></p>
 {% endblock %}
