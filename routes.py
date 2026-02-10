@@ -547,6 +547,18 @@ def register_routes(app):
                         "INSERT OR IGNORE INTO review_result (review_id, checklist_id) VALUES (?, ?)",
                         (review_id, item["id"]),
                     )
+                # Re-review: copy result and attachment from original review for matching checklist items only.
+                # New sections/items (not in original) have no source row, so they stay blank.
+                if from_id:
+                    for row in db.execute(
+                        "SELECT checklist_id, result, attachment FROM review_result WHERE review_id = ?",
+                        (from_id,),
+                    ).fetchall():
+                        db.execute(
+                            """UPDATE review_result SET result = ?, attachment = ?
+                               WHERE review_id = ? AND checklist_id = ?""",
+                            (row["result"], row["attachment"] or None, review_id, row["checklist_id"]),
+                        )
                 db.commit()
                 return redirect(url_for("review_run", review_id=review_id))
 
