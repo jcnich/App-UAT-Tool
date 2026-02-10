@@ -9,6 +9,8 @@
   {% else %}
   <section class="card">
     <form method="post" action="{{ url_for('review_run', review_id=review.id) }}">
+      <p class="keyboard-hint muted" id="checklist-keyboard-hint">Tab into the checklist, then use arrow keys to move between rows; 1–4 for Pass / Fail / Partial / NA; Enter to attach.</p>
+      <div id="checklist-keyboard-grid" class="checklist-keyboard-grid" role="grid" aria-label="Checklist results" aria-describedby="checklist-keyboard-hint" tabindex="0">
       {% for sec in sections_criteria %}
         <div class="criteria-section">
           <h3 class="section-title">{{ sec.name }}</h3>
@@ -22,20 +24,22 @@
             </thead>
             <tbody>
               {% for c in sec['items'] %}
-                <tr>
+                <tr class="result-row" data-criterion-id="{{ c.id }}">
                   <td>{{ loop.index }}</td>
                   <td>{{ c.text }}</td>
-                  <td class="result-buttons">
-                    {% for opt in results_options %}
-                      <label class="result-label">
-                        <input type="radio" name="result_{{ c.id }}" value="{{ opt }}" {% if c.result == opt %}checked{% endif %}>
-                        <span class="result-{{ opt|lower }}">{{ opt }}</span>
-                      </label>
-                    {% endfor %}
+                  <td class="result-buttons result-cell">
+                    <div class="result-radiogroup" role="radiogroup" aria-label="Result">
+                      {% for opt in results_options %}
+                        <label class="result-label">
+                          <input type="radio" name="result_{{ c.id }}" value="{{ opt }}" {% if c.result == opt %}checked{% endif %} class="result-radio">
+                          <span class="result-{{ opt|lower }}">{{ opt }}</span>
+                        </label>
+                      {% endfor %}
+                    </div>
                     <span class="attach-wrap">
-                      <a href="#" class="attach-link" data-for="attach-field-{{ c.id }}" aria-expanded="{{ 'true' if c.attachment else 'false' }}">Attach</a>
+                      <a href="#" class="attach-link" data-for="attach-field-{{ c.id }}" aria-expanded="{{ 'true' if c.attachment else 'false' }}" tabindex="-1">Attach</a>
                       <span id="attach-field-{{ c.id }}" class="attach-field {% if not c.attachment %}attach-field-hidden{% endif %}">
-                        <input type="text" name="attachment_{{ c.id }}" value="{{ c.attachment }}" placeholder="URL or ticket #" class="attach-input" title="Screenshot URL or ticket reference">
+                        <input type="text" name="attachment_{{ c.id }}" value="{{ c.attachment }}" placeholder="URL or ticket #" class="attach-input" title="Screenshot URL or ticket reference" tabindex="-1">
                       </span>
                     </span>
                   </td>
@@ -45,6 +49,7 @@
           </table>
         </div>
       {% endfor %}
+      </div>
       <p class="actions">
         <button type="submit" name="action" value="save" class="btn">Save and continue later</button>
         <button type="submit" name="action" value="finish" class="btn btn-primary">Finish review</button>
@@ -65,4 +70,5 @@
       });
     });
   </script>
+  <script src="{{ url_for('static', filename='checklist-keyboard.js') }}"></script>
 {% endblock %}
