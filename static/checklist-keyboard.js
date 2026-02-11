@@ -111,28 +111,16 @@
     for (var i = 0; i < allRadios.length; i++) {
       allRadios[i].setAttribute('tabindex', '-1');
     }
-    // Grid container is the only tab stop; focus is moved to first radio on focusin
+    // Grid container is the only tab stop; focus moves to first row on first keydown when grid has focus
   }
 
   function handleGridFocusIn(e) {
     var grid = getGrid();
     if (!grid) return;
-    if (e.target === grid) {
-      var rows = getRows();
-      if (rows.length === 0) return;
-      var firstRadio = getSelectedRadio(rows[0]);
-      if (firstRadio) {
-        setRovingTabindex(firstRadio);
-        setTimeout(function () {
-          if (document.activeElement === grid) {
-            firstRadio.focus();
-            updateRowHighlight();
-          }
-        }, 0);
-      }
-    } else {
-      updateRowHighlight();
-    }
+    // Never move focus when focus lands on the grid (Tab or click). Let keydown handle
+    // "focus first row" when the user actually presses a key after tabbing in. This
+    // avoids stealing focus when clicking a label (click often lands focus on grid first).
+    updateRowHighlight();
   }
 
   function handleGridFocusOut(e) {
