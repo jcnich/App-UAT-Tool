@@ -1,5 +1,6 @@
 """Flask routes for UAT Test Management Tool."""
 import csv
+from datetime import date
 from io import BytesIO, StringIO, TextIOWrapper
 
 from flask import (
@@ -429,7 +430,7 @@ def register_routes(app):
         prefill = None
         if from_id:
             r = db.execute(
-                "SELECT app_name, app_id, date, app_owner_email, overall_notes FROM review WHERE id = ?",
+                "SELECT app_name, app_id, date, app_owner_email, store_url, overall_notes FROM review WHERE id = ?",
                 (from_id,),
             ).fetchone()
             if r:
@@ -439,19 +440,21 @@ def register_routes(app):
             action = request.form.get("action")
             app_name = request.form.get("app_name", "").strip()
             app_id = request.form.get("app_id", "").strip()
-            date = request.form.get("date", "").strip()
+            date_val = request.form.get("date", "").strip()
             app_owner_email = request.form.get("app_owner_email", "").strip()
+            store_url = request.form.get("store_url", "").strip()
             overall_notes = request.form.get("overall_notes", "").strip()
             prefill_data = {
                 "app_name": app_name,
                 "app_id": app_id,
-                "date": date,
+                "date": date_val,
                 "app_owner_email": app_owner_email,
+                "store_url": store_url,
                 "overall_notes": overall_notes,
             }
 
             if action == "next":
-                if not app_name or not app_id or not date:
+                if not app_name or not app_id or not date_val:
                     flash("App name, App ID, and Date are required.")
                     return render_template(
                         "review_new.html",
@@ -489,7 +492,7 @@ def register_routes(app):
 
             if action == "create":
                 section_ids = request.form.getlist("section_ids", type=int)
-                if not app_name or not app_id or not date:
+                if not app_name or not app_id or not date_val:
                     flash("App name, App ID, and Date are required.")
                     return render_template(
                         "review_new.html",
@@ -522,10 +525,11 @@ def register_routes(app):
                         sections=sections_for_step2,
                         active_page="review_new",
                     )
+                store_url_create = request.form.get("store_url", "").strip()
                 cur = db.execute(
-                    """INSERT INTO review (app_name, app_id, date, app_owner_email, overall_notes, status)
-                       VALUES (?, ?, ?, ?, ?, 'in_progress')""",
-                    (app_name, app_id, date, app_owner_email, overall_notes),
+                    """INSERT INTO review (app_name, app_id, date, app_owner_email, store_url, overall_notes, status)
+                       VALUES (?, ?, ?, ?, ?, ?, 'in_progress')""",
+                    (app_name, app_id, date_val, app_owner_email, store_url_create, overall_notes),
                 )
                 db.commit()
                 review_id = cur.lastrowid
@@ -562,6 +566,9 @@ def register_routes(app):
                 db.commit()
                 return redirect(url_for("review_run", review_id=review_id))
 
+        # Default date to today when creating a new review (no prefill/re-review)
+        if prefill is None:
+            prefill = {"date": date.today().isoformat()}
         return render_template(
             "review_new.html",
             prefill=prefill,
@@ -575,7 +582,7 @@ def register_routes(app):
         """Run checklist for a review: Pass/Fail/Partial/NA per item. Save / Finish review."""
         db = get_db()
         review = db.execute(
-            "SELECT id, app_name, app_id, date, app_owner_email, overall_notes, status FROM review WHERE id = ?",
+            "SELECT id, app_name, app_id, date, app_owner_email, store_url, overall_notes, status FROM review WHERE id = ?",
             (review_id,),
         ).fetchone()
         if not review:
@@ -583,6 +590,15 @@ def register_routes(app):
 
         if request.method == "POST":
             action = request.form.get("action")
+            # Update editable header fields (optional on create, editable during review)
+            store_url = request.form.get("store_url", "").strip()
+            app_owner_email = request.form.get("app_owner_email", "").strip()
+            overall_notes = request.form.get("overall_notes", "").strip()
+            db.execute(
+                "UPDATE review SET store_url = ?, app_owner_email = ?, overall_notes = ? WHERE id = ?",
+                (store_url, app_owner_email, overall_notes, review_id),
+            )
+            db.commit()
             for key, val in request.form.items():
                 if key.startswith("result_") and val in RESULTS:
                     cid = key[7:]
@@ -664,7 +680,7 @@ def register_routes(app):
         """Review detail: metadata, results, Export PDF, Re-review, Approve/Reject, Archive."""
         db = get_db()
         review = db.execute(
-            "SELECT id, app_name, app_id, date, app_owner_email, overall_notes, status, archived, created_at FROM review WHERE id = ?",
+            "SELECT id, app_name, app_id, date, app_owner_email, store_url, overall_notes, status, archived, created_at FROM review WHERE id = ?",
             (review_id,),
         ).fetchone()
         if not review:
@@ -769,7 +785,7 @@ def register_routes(app):
 
         db = get_db()
         review = db.execute(
-            "SELECT id, app_name, app_id, date, app_owner_email, overall_notes, created_at FROM review WHERE id = ?",
+            "SELECT id, app_name, app_id, date, app_owner_email, store_url, overall_notes, created_at FROM review WHERE id = ?",
             (review_id,),
         ).fetchone()
         if not review:

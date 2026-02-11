@@ -1,18 +1,21 @@
 """Generate PDF report for a UAT review. Compact, modern layout with BC branding."""
 import os
 from io import BytesIO
+from xml.sax.saxutils import escape
 
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
 from reportlab.platypus import (
+    BaseDocTemplate,
+    Flowable,
+    Frame,
+    PageTemplate,
     Paragraph,
-    SimpleDocTemplate,
     Spacer,
     Table,
     TableStyle,
-    Flowable,
 )
 
 # Logo path: project assets folder
@@ -76,19 +79,22 @@ RESULT_CONFIG = {
 }
 
 
-def _footer_canvas(canvas, doc):
-    """Draw confidentiality notice and page number on each page (including single-page reports)."""
+def _footer_canvas(canvas, doc, title=None):
+    """Draw PDF metadata (title), confidentiality notice, and page number on each page."""
     canvas.saveState()
-    footer_y = 0.4 * inch
-    # Thin separator line above footer
-    canvas.setStrokeColor(colors.HexColor("#ccc"))
+    # Set document title so viewers don't show "(anonymous)"
+    if title:
+        canvas.setTitle(title)
+    # Position footer well above bottom edge so it stays visible (not clipped by viewers/printers)
+    footer_y = 0.6 * inch
+    footer_font_size = 9
+    line_y = footer_y + (footer_font_size * 0.6)
+    canvas.setStrokeColor(colors.HexColor("#888"))
     canvas.setLineWidth(0.5)
-    canvas.line(0.5 * inch, footer_y + 8, 8 * inch, footer_y + 8)
-    canvas.setFont("Helvetica", 8)
-    canvas.setFillColor(colors.HexColor("#444"))
-    # Confidentiality (left)
-    canvas.drawString(0.5 * inch, footer_y, "Confidential \u2014 For internal use only.")
-    # Page number (right)
+    canvas.line(0.5 * inch, line_y, 8 * inch, line_y)
+    canvas.setFont("Helvetica-Bold", footer_font_size)
+    canvas.setFillColor(colors.HexColor("#333"))
+    canvas.drawString(0.5 * inch, footer_y, "Confidential \u2014 Not for public release.")
     canvas.drawRightString(8 * inch, footer_y, f"Page {doc.page}")
     canvas.restoreState()
 
@@ -105,17 +111,29 @@ def build_pdf(review, sections_criteria, header_title_position="right_top"):
     """
     buf = BytesIO()
     margin = 0.5 * inch
-    bottom_with_footer = 0.65 * inch  # room for footer line
-    doc = SimpleDocTemplate(
+    bottom_with_footer = 0.9 * inch  # room for footer so it's not clipped
+    doc = BaseDocTemplate(
         buf,
         pagesize=letter,
         rightMargin=margin,
         leftMargin=margin,
         topMargin=margin,
         bottomMargin=bottom_with_footer,
-        onFirstPage=_footer_canvas,
-        onLaterPages=_footer_canvas,
     )
+    frame = Frame(
+        doc.leftMargin,
+        doc.bottomMargin,
+        doc.width,
+        doc.height,
+        id="normal",
+    )
+    app_name = (review.get("app_name") or "Report").strip()
+    pdf_title = f"Marketplace App Review Results \u2014 {app_name}"
+
+    def on_page(canvas, doc):
+        _footer_canvas(canvas, doc, title=pdf_title)
+
+    doc.addPageTemplates([PageTemplate(id="all", frames=frame, onPage=on_page)])
     # Content width on letter with 0.5" margins = 7.5"
     content_width = 7.5 * inch
     styles = getSampleStyleSheet()
@@ -150,6 +168,24 @@ def build_pdf(review, sections_criteria, header_title_position="right_top"):
         parent=styles["Normal"],
         fontSize=7,
     )
+    table_cell_style = ParagraphStyle(
+        "TableCell",
+        parent=styles["Normal"],
+        fontSize=7,
+        leading=8,
+        spaceBefore=0,
+        spaceAfter=0,
+    )
+
+    # Alternating row color for data rows (light gray)
+    ROW_ALT_BG = colors.HexColor("#E8E8EC")
+    REF_MAX_LEN = 50
+
+    def _truncate(s, max_len):
+        s = (s or "").strip()
+        if len(s) <= max_len:
+            return s
+        return s[: max_len - 3] + "..."
 
     body = []
 
@@ -247,9 +283,21 @@ def build_pdf(review, sections_criteria, header_title_position="right_top"):
             if raw_result in counts:
                 counts[raw_result] += 1
             display_text, _ = RESULT_CONFIG.get(raw_result, ("—", colors.HexColor("#666666")))
+            criterion_text = c.get("text", "")
+            criterion_cell = Paragraph(escape(criterion_text), table_cell_style)
             attachment = (c.get("attachment") or "").strip()
-            ref_cell = attachment if attachment else "—"
-            table_data.append([str(global_idx), c.get("text", ""), display_text, ref_cell])
+            if attachment:
+                ref_display = _truncate(attachment, REF_MAX_LEN)
+                if attachment.startswith("https://") or attachment.startswith("http://"):
+                    ref_cell = Paragraph(
+                        f'<a href="{escape(attachment)}" color="#3C64F4">{escape(ref_display)}</a>',
+                        table_cell_style,
+                    )
+                else:
+                    ref_cell = Paragraph(escape(ref_display), table_cell_style)
+            else:
+                ref_cell = "—"
+            table_data.append([str(global_idx), criterion_cell, display_text, ref_cell])
             result_styles.append((len(table_data) - 1, raw_result))
             global_idx += 1
         if table_data:
@@ -271,6 +319,11 @@ def build_pdf(review, sections_criteria, header_title_position="right_top"):
                 ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),  # center text vertically in each row
                 ("LINEBELOW", (0, 0), (-1, 0), 0.5, colors.HexColor("#34313F")),
             ]
+            for row_idx in range(1, len(table_data)):
+                if row_idx % 2 == 1:
+                    style_commands.append(
+                        ("BACKGROUND", (0, row_idx), (-1, row_idx), ROW_ALT_BG)
+                    )
             for row_idx, result_key in result_styles:
                 if result_key in RESULT_CONFIG:
                     _, color = RESULT_CONFIG[result_key]

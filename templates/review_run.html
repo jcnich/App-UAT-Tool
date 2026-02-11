@@ -8,7 +8,16 @@
     <p class="muted">No checklist items. <a href="{{ url_for('checklist_edit') }}">Add criteria</a> first.</p>
   {% else %}
   <section class="card">
-    <form method="post" action="{{ url_for('review_run', review_id=review.id) }}">
+    <form method="post" action="{{ url_for('review_run', review_id=review.id) }}" id="review-run-form">
+      <div class="review-run-meta form-card" style="margin-bottom: 1.5rem;">
+        <p class="muted" style="margin-top: 0; margin-bottom: 0.5rem;">You can edit these during the review.</p>
+        <label for="store_url">Store URL</label>
+        <input type="url" id="store_url" name="store_url" value="{{ review.store_url or '' }}" placeholder="https://…">
+        <label for="app_owner_email">App owner email</label>
+        <input type="email" id="app_owner_email" name="app_owner_email" value="{{ review.app_owner_email or '' }}">
+        <label for="overall_notes">Overall notes</label>
+        <textarea id="overall_notes" name="overall_notes" rows="3">{{ review.overall_notes or '' }}</textarea>
+      </div>
       <p class="keyboard-hint muted" id="checklist-keyboard-hint">Tab into the checklist, then use arrow keys to move between rows; 1–4 for Pass / Fail / Partial / NA; Enter to attach.</p>
       <div id="checklist-keyboard-grid" class="checklist-keyboard-grid" role="grid" aria-label="Checklist results" aria-describedby="checklist-keyboard-hint" tabindex="0">
       {% for sec in sections_criteria %}

@@ -100,6 +100,7 @@ def init_db(app=None):
             app_id TEXT NOT NULL,
             date TEXT NOT NULL,
             app_owner_email TEXT NOT NULL DEFAULT '',
+            store_url TEXT DEFAULT '',
             overall_notes TEXT DEFAULT '',
             status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'in_progress', 'completed', 'approved', 'rejected')),
             archived INTEGER NOT NULL DEFAULT 0,
@@ -147,6 +148,13 @@ def init_db(app=None):
     cols = [row[1] for row in cur.fetchall()]
     if "attachment" not in cols:
         conn.execute("ALTER TABLE review_result ADD COLUMN attachment TEXT")
+        conn.commit()
+
+    # Migration: add store_url to review if missing (internal only, not in PDF)
+    cur = conn.execute("PRAGMA table_info(review)")
+    cols = [row[1] for row in cur.fetchall()]
+    if "store_url" not in cols:
+        conn.execute("ALTER TABLE review ADD COLUMN store_url TEXT DEFAULT ''")
         conn.commit()
 
     # Migration: add section_id to checklist if missing (existing DBs)

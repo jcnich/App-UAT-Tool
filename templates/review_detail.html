@@ -7,6 +7,8 @@
     {% if review.archived %}<span class="badge badge-archived">Archived</span>{% endif %}
   </p>
   <dl class="meta-list">
+    <dt>Store URL</dt>
+    <dd>{% if review.store_url %}<a href="{{ review.store_url }}" target="_blank" rel="noopener noreferrer">{{ review.store_url }}</a>{% else %}—{% endif %}</dd>
     <dt>App owner email</dt>
     <dd>{{ review.app_owner_email or '—' }}</dd>
     <dt>Overall notes</dt>

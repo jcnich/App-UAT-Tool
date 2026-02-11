@@ -16,6 +16,7 @@
       <input type="hidden" name="app_id" value="{{ (prefill or {}).get('app_id', '') }}">
       <input type="hidden" name="date" value="{{ (prefill or {}).get('date', '') }}">
       <input type="hidden" name="app_owner_email" value="{{ (prefill or {}).get('app_owner_email', '') }}">
+      <input type="hidden" name="store_url" value="{{ (prefill or {}).get('store_url', '') }}">
       <input type="hidden" name="overall_notes" value="{{ (prefill or {}).get('overall_notes', '') }}">
       <p><strong>App:</strong> {{ (prefill or {}).get('app_name', '') }} · {{ (prefill or {}).get('app_id', '') }}</p>
       <label>Sections to include</label>
@@ -57,6 +58,8 @@
       <input type="date" name="date" value="{{ (prefill or {}).get('date', '') }}" required>
       <label>App owner email</label>
       <input type="email" name="app_owner_email" value="{{ (prefill or {}).get('app_owner_email', '') }}">
+      <label>Store URL</label>
+      <input type="url" name="store_url" value="{{ (prefill or {}).get('store_url', '') }}" placeholder="https://…">
       <label>Overall notes</label>
       <textarea name="overall_notes" rows="3">{{ (prefill or {}).get('overall_notes', '') }}</textarea>
       <p><button type="submit" class="btn btn-primary">Next: Select sections</button></p>
