@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Edit sections – {{ review.app_name }}{% endblock %}
+{% block content %}
+  <h1>Edit sections: {{ review.app_name }}</h1>
+  <p class="muted">App ID: {{ review.app_id }}</p>
+  <p>Add or remove sections for this review. Existing results for removed sections are kept if you add the section back later.</p>
+
+  <section class="card">
+    <form method="post" action="{{ url_for('review_edit_sections', review_id=review.id) }}" class="form-card" id="review-edit-sections-form">
+      <label>Sections to include</label>
+      <p class="section-select-actions">
+        <button type="button" class="btn btn-sm" id="select-all-sections">Select all</button>
+        <button type="button" class="btn btn-sm" id="deselect-all-sections">Deselect all</button>
+      </p>
+      <ul class="section-checkbox-list">
+        {% for sec in sections %}
+          <li>
+            <label class="checklist-checkbox-wrap">
+              <input type="checkbox" name="section_ids" value="{{ sec.id }}" class="section-cb" {% if sec.selected %}checked{% endif %}>
+              <span class="checklist-checkbox-label">{{ sec.name }}</span>
+            </label>
+          </li>
+        {% endfor %}
+      </ul>
+      <p>
+        <button type="submit" class="btn btn-primary">Update sections and return to checklist</button>
+        <a href="{{ url_for('review_run', review_id=review.id) }}" class="btn">Cancel</a>
+      </p>
+    </form>
+  </section>
+  <p><a href="{{ url_for('review_run', review_id=review.id) }}">Back to checklist</a></p>
+
+  <script>
+    (function() {
+      var selectAll = document.getElementById('select-all-sections');
+      var deselectAll = document.getElementById('deselect-all-sections');
+      var checkboxes = document.querySelectorAll('.section-cb');
+      if (selectAll) selectAll.addEventListener('click', function() { checkboxes.forEach(function(cb) { cb.checked = true; }); });
+      if (deselectAll) deselectAll.addEventListener('click', function() { checkboxes.forEach(function(cb) { cb.checked = false; }); });
+    })();
+  </script>
+{% endblock %}

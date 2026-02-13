@@ -733,6 +733,77 @@ def register_routes(app):
             active_page="index",
         )
 
+    @app.route("/review/<int:review_id>/edit-sections", methods=["GET", "POST"])
+    def review_edit_sections(review_id):
+        """Edit which sections are included in this review; then return to run checklist."""
+        db = get_db()
+        review = db.execute(
+            "SELECT id, app_name, app_id FROM review WHERE id = ?", (review_id,)
+        ).fetchone()
+        if not review:
+            abort(404)
+        review = dict(review)
+
+        if request.method == "POST":
+            section_ids = request.form.getlist("section_ids", type=int)
+            if not section_ids:
+                flash("Select at least one section for this review.")
+                sections = db.execute(
+                    "SELECT id, sort_order, name FROM checklist_section ORDER BY sort_order, id"
+                ).fetchall()
+                selected_ids = _get_review_section_ids(db, review_id) or set()
+                sections_for_form = [
+                    {"id": row["id"], "name": row["name"], "selected": row["id"] in selected_ids}
+                    for row in sections
+                ]
+                return render_template(
+                    "review_edit_sections.html",
+                    review=review,
+                    sections=sections_for_form,
+                    active_page="index",
+                )
+            # Replace review_section for this review
+            db.execute("DELETE FROM review_section WHERE review_id = ?", (review_id,))
+            for sid in section_ids:
+                db.execute(
+                    "INSERT INTO review_section (review_id, section_id) VALUES (?, ?)",
+                    (review_id, sid),
+                )
+            db.commit()
+            # Ensure review_result rows exist for all checklist items in selected sections
+            placeholders = ",".join("?" * len(section_ids))
+            items = db.execute(
+                "SELECT id FROM checklist WHERE section_id IN ({}) ORDER BY sort_order, id".format(
+                    placeholders
+                ),
+                section_ids,
+            ).fetchall()
+            for item in items:
+                db.execute(
+                    "INSERT OR IGNORE INTO review_result (review_id, checklist_id) VALUES (?, ?)",
+                    (review_id, item["id"]),
+                )
+            db.commit()
+            flash("Sections updated. You can add or remove sections anytime from the checklist.")
+            return redirect(url_for("review_run", review_id=review_id))
+
+        sections = db.execute(
+            "SELECT id, sort_order, name FROM checklist_section ORDER BY sort_order, id"
+        ).fetchall()
+        selected_ids = _get_review_section_ids(db, review_id)
+        if selected_ids is None:
+            selected_ids = {row["id"] for row in sections}
+        sections_for_form = [
+            {"id": row["id"], "name": row["name"], "selected": row["id"] in selected_ids}
+            for row in sections
+        ]
+        return render_template(
+            "review_edit_sections.html",
+            review=review,
+            sections=sections_for_form,
+            active_page="index",
+        )
+
     @app.route("/review/<int:review_id>/re-review", methods=["POST"])
     def re_review(review_id):
         """Redirect to New review with from_id so user can confirm metadata and sections, then create new run."""

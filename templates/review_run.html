@@ -61,6 +61,7 @@
       </div>
       <p class="actions">
         <button type="submit" name="action" value="save" class="btn">Save and continue later</button>
+        <a href="{{ url_for('review_edit_sections', review_id=review.id) }}" class="btn">Edit sections</a>
         <button type="submit" name="action" value="finish" class="btn btn-primary">Finish review</button>
       </p>
     </form>
